@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Envio de Mensajes</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .login-container {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #00A4E4;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #FF7F50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff5a2b;
+        }
+
+        table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #00A4E4;
+            color: white;
+        }
+
+        #consoleOutput {
+            background-color: #222;
+            color: #00FF7F;
+            padding: 15px;
+            margin: 20px 0;
+            height: 200px;
+            overflow-y: auto;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+
+        img {
+            width: 150px;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Logo -->
+        <img src="https://bestwork.cl/wp-content/uploads/2023/05/Logo.png" alt="Logo Bestwork">
+
+        <!-- Login Panel -->
+        <div id="loginPanel" class="login-container">
+            <h2>Iniciar Sesión</h2>
+            <input type="text" id="username" placeholder="Nombre de Usuario">
+            <input type="password" id="password" placeholder="Contraseña">
+            <button onclick="login()">Ingresar</button>
+        </div>
+
+        <!-- Main Panel (hidden initially) -->
+        <div id="mainPanel" class="hidden">
+            <h2>Subir Documento de Excel</h2>
+            <input type="file" id="uploadExcel">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Celular</th>
+                        <th>Correo</th>
+                        <th>Ejecutiva</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="enviarMensajesBtn" disabled>Enviar Mensajes</button>
+
+            <!-- Console Output -->
+            <div id="consoleOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        let usuarios = [
+            { nombre: 'sbilbao', contraseña: 'bestwebsb.1', dueño: 'Stephy' },
+            { nombre: 'ftobar', contraseña: 'bestwebft.1', dueño: 'Fabian' },
+            { nombre: 'mrestovic', contraseña: 'bestwebmr.1', dueño: 'Max' },
+            { nombre: 'jroco', contraseña: 'bestwebjr.1', dueño: 'Javiera' },
+            { nombre: 'cviveros', contraseña: 'bestwebcv.1', dueño: 'Catalina' }
+        ];
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const usuarioValido = usuarios.find(u => u.nombre === username && u.contraseña === password);
+            if (usuarioValido) {
+                document.getElementById('loginPanel').classList.add('hidden');
+                document.getElementById('mainPanel').classList.remove('hidden');
+                logToConsole(`Bienvenido ${usuarioValido.dueño}`);
+            } else {
+                alert('Usuario o contraseña incorrectos');
+            }
+        }
+
+        let datos = [];
+        const dataTableBody = document.querySelector("#dataTable tbody");
+
+        document.getElementById('uploadExcel').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                datos = [];
+                dataTableBody.innerHTML = "";
+
+                worksheet.forEach((row, index) => {
+                    try {
+                        let celular = String(row["CELULAR"]).replace('\u202a', '').replace('\u202c', '');
+                        let cleanedData = [row["NOMBRE"], parseInt(celular), row["CORREO"], row["EJECUTIVA"]];
+                        datos.push(cleanedData);
+
+                        let newRow = dataTableBody.insertRow();
+                        newRow.insertCell(0).textContent = row["NOMBRE"];
+                        newRow.insertCell(1).textContent = celular;
+                        newRow.insertCell(2).textContent = row["CORREO"];
+                        newRow.insertCell(3).textContent = row["EJECUTIVA"];
+
+                    } catch (error) {
+                        logToConsole(`Error en el índice ${index}: ${row["CELULAR"]} no es un número válido.`);
+                    }
+                });
+
+                if (datos.length > 0) {
+                    document.getElementById("enviarMensajesBtn").disabled = false;
+                    logToConsole(`${datos.length} contactos cargados`);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        const flow = "328cf459-ea49-45d5-b014-755c8db41bde";
+        let contador80En15Min = 0;
+
+        async function agregarContactoAFlow(CELULAR, NOMBRE, CORREO, EJECUTIVA, flow) {
+            const url = `https://flows.messagebird.com/flows/${flow}/invoke`;
+            const headers = {
+                CELULAR: CELULAR,
+                NOMBRE: NOMBRE,
+                CORREO: CORREO,
+                EJECUTIVA: EJECUTIVA
+            };
+
+            try {
+                const response = await axios.post(url, null, { params: headers });
+                logToConsole(`Mensaje enviado a ${NOMBRE} (${CELULAR})`);
+            } catch (error) {
+                logToConsole(`Error enviando mensaje a ${NOMBRE} (${CELULAR}): ${error}`);
+            }
+        }
+
+        async function enviarMensajes() {
+            for (let i = 0; i < datos.length; i++) {
+                if (contador80En15Min < 60) {
+                    await agregarContactoAFlow(datos[i][1], datos[i][0], datos[i][2], datos[i][3], flow);
+                    contador80En15Min++;
+                } else {
+                    logToConsole("Esperando 15 minutos para enviar otros 60 mensajes...");
+                    await new Promise(resolve => setTimeout(resolve, 900000));
+                    contador80En15Min = 0;
+                    await agregarContactoAFlow(datos[i][1], datos[i][0], datos[i][2], datos[i][3], flow);
+                    contador80En15Min++;
+                }
+            }
+
+            logToConsole("ENVÍO COMPLETADO");
+        }
+
+        document.getElementById("enviarMensajesBtn").addEventListener("click", function() {
+            enviarMensajes();
+        });
+
+        function logToConsole(message) {
+            const consoleOutput = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            consoleOutput.innerHTML += `<p>[${timestamp}] ${message}</p>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+    </script>
+</body>
+</html>
